@@ -75,8 +75,8 @@ class TM1637Display:
 
         # Set the pin direction and default value.
         # Both pins are set as inputs, allowing the pull-up resistors to pull them up
-        self.Clk.switch_to_input(digitalio.Pull.DOWN)
-        self.DIO.switch_to_input(digitalio.Pull.DOWN)
+        self.Clk.switch_to_output(True)
+        self.DIO.switch_to_output(True)
 
     def setBrightness(self, brightness, on=True):
         self.brightness = (brightness & 0x7) | ( 0x08 if on else 0x00)
@@ -166,16 +166,16 @@ class TM1637Display:
         microcontroller.delay_us(self._bitDelay)
 
     def start(self):
-        self.DIO.switch_to_output(True) # ?
-        self.bitDelay()
+        self.DIO.value = True # ?
+        microcontroller.delay_us(self._bitDelay)
 
     def stop(self):
-        self.DIO.switch_to_output(True) # ?
-        self.bitDelay()
-        self.Clk.switch_to_input(digitalio.Pull.DOWN)
-        self.bitDelay()
-        self.DIO.switch_to_input(digitalio.Pull.DOWN)
-        self.bitDelay()
+        self.DIO.value = False # ?
+        microcontroller.delay_us(self._bitDelay)
+        self.Clk.value = True
+        microcontroller.delay_us(self._bitDelay)
+        self.DIO.value = True
+        microcontroller.delay_us(self._bitDelay)
 
     def writeByte(self, byte):
         data = byte
@@ -183,39 +183,43 @@ class TM1637Display:
         # 8 Data Bits
         for i in range(8):
             # CLK low
-            self.Clk.switch_to_output(False)
-            self.bitDelay()
+            self.Clk.value = False
+            microcontroller.delay_us(self._bitDelay)
 
             # Set data bit
             if data & 0x01:
-                self.DIO.switch_to_input(digitalio.Pull.DOWN)
+                self.DIO.value = True
             else:
-                self.DIO.switch_to_output(True) # ?
+                self.DIO.value = False # ?
 
-            self.bitDelay()
+            microcontroller.delay_us(self._bitDelay)
 
             # CLK high
-            self.Clk.switch_to_input(digitalio.Pull.DOWN)
-            self.bitDelay()
+            self.Clk.value = True
+            microcontroller.delay_us(self._bitDelay)
             data = data >> 1
 
         # Wait for acknowledge
         # CLK to zero
-        self.Clk.switch_to_output(True) # ?
-        self.DIO.switch_to_input(digitalio.Pull.DOWN)
-        self.bitDelay()
+        self.Clk.value = False
+        self.DIO.switch_to_input(digitalio.Pull.UP)
+        microcontroller.delay_us(self._bitDelay)
 
         # CLK to high
-        self.Clk.switch_to_input(digitalio.Pull.DOWN)
-        self.bitDelay()
+        self.Clk.value = True
+        microcontroller.delay_us(self._bitDelay)
         ack = self.DIO.value
         if ack is False:
-            self.DIO.switch_to_output(True) #?
+            print("ack")
+            self.DIO.switch_to_output(False) #?
+        else:
+            print("noack")
+            self.DIO.switch_to_output(True)
 
 
-        self.bitDelay()
-        self.Clk.switch_to_output(True) #?
-        self.bitDelay()
+        microcontroller.delay_us(self._bitDelay)
+        self.Clk.value = False
+        microcontroller.delay_us(self._bitDelay)
 
         return ack
 
