@@ -16,6 +16,7 @@
 //  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 '''
 import digitalio
+import microcontroller
 
 SEG_A = 0b00000001
 SEG_B = 0b00000010
@@ -65,21 +66,23 @@ digitToSegment = [
 minusSegments = 0b01000000
 
 class TM1637Display:
-    def __init__(self, pinClk, pinDIO, bitDelay):
+    def __init__(self, pinClk, pinDIO, bitDelay=DEFAULT_BIT_DELAY):
         # Copy the pin numbers
         self.Clk = digitalio.DigitalInOut(pinClk)
         self.DIO = digitalio.DigitalInOut(pinDIO)
-        self.bitDelay = bitDelay
+        self._bitDelay = bitDelay
+        self.brightness = 0x0F
 
         # Set the pin direction and default value.
         # Both pins are set as inputs, allowing the pull-up resistors to pull them up
         self.Clk.switch_to_input(digitalio.Pull.DOWN)
         self.DIO.switch_to_input(digitalio.Pull.DOWN)
 
-    def setBrightness(self, brightness, on):
+    def setBrightness(self, brightness, on=True):
         self.brightness = (brightness & 0x7) | ( 0x08 if on else 0x00)
 
-    def setSegments(self, segments, length, pos):
+    def setSegments(self, segments, length=0, pos=0):
+        length = length or len(segments)
         self.start()
         self.writeByte(TM1637_I2C_COMM1)
         self.stop()
@@ -89,7 +92,7 @@ class TM1637Display:
         self.writeByte(TM1637_I2C_COMM2 + (pos & 0x03))
 
         # Write the data bytes
-        for (k=0; k < length; k++)
+        for k in range(length):
             self.writeByte(segments[k])
 
         self.stop()
@@ -100,12 +103,12 @@ class TM1637Display:
         self.stop()
 
     def clear(self):
-        setSegments((0, 0, 0, 0))
+        self.setSegments((0, 0, 0, 0))
 
-    def showNumberDec(self, num, leading_zero, length, pos):
+    def showNumberDec(self, num, leading_zero=False, length=4, pos=0):
         self.showNumberDecEx(num, 0, leading_zero, length, pos)
 
-    def showNumberDecEx(self, num, dots, leading_zero, length, pos):
+    def showNumberDecEx(self, num, dots=0, leading_zero=False, length=4, pos=0):
         self.showNumberBaseEx(
             -10 if num < 0 else 10,
             -num if num < 0 else num,
@@ -115,10 +118,10 @@ class TM1637Display:
             pos
         )
 
-    def showNumberHexEx(self, num, dots, leading_zero, length, pos):
+    def showNumberHexEx(self, num, dots=0, leading_zero=False, length=4, pos=0):
         self.showNumberBaseEx(16, num, dots, leading_zero, length, pos)
 
-    def showNumberBaseEx(self, base, num, dots, leading_zero, length, pos):
+    def showNumberBaseEx(self, base, num, dots=0, leading_zero=False, length=4, pos=0):
         negative = False
         if base < 0:
             base = -base
@@ -128,9 +131,9 @@ class TM1637Display:
 
         if num == 0 and not leading_zero:
             # Singular case - take care separately
-            for i in range(length-1):
+            for i in range(length - 1):
                 digits[i] = 0
-            digits[length-1] = self.encodeDigit(0)
+            digits[length - 1] = self.encodeDigit(0)
 
         else:
             #uint8_t i = length-1
@@ -142,7 +145,7 @@ class TM1637Display:
             for i in range(length-1, -1, -1):
                 digit = num % base
 
-                if digit == 0 and num == 0 and leading_zero == false:
+                if digit == 0 and num == 0 and leading_zero == False:
                     # Leading zero is blank
                     digits[i] = 0
                 else:
@@ -151,9 +154,8 @@ class TM1637Display:
                 if digit == 0 and num == 0 and negative:
                     digits[i] = minusSegments
                     negative = False
-                }
 
-                num /= base
+                num //= base
 
         if dots != 0:
             self.showDots(dots, digits)
@@ -161,7 +163,7 @@ class TM1637Display:
 
 
     def bitDelay(self):
-        microcontroller.delay_us(self.bitDelay)
+        microcontroller.delay_us(self._bitDelay)
 
     def start(self):
         self.DIO.switch_to_output(True) # ?
@@ -175,8 +177,8 @@ class TM1637Display:
         self.DIO.switch_to_input(digitalio.Pull.DOWN)
         self.bitDelay()
 
-    def writeByte(self byte):
-        data = b
+    def writeByte(self, byte):
+        data = byte
 
         # 8 Data Bits
         for i in range(8):
@@ -206,8 +208,8 @@ class TM1637Display:
         # CLK to high
         self.Clk.switch_to_input(digitalio.Pull.DOWN)
         self.bitDelay()
-        ack = digitalRead(self.DIO)
-        if self.DIO.value is False:
+        ack = self.DIO.value
+        if ack is False:
             self.DIO.switch_to_output(True) #?
 
 
@@ -224,4 +226,4 @@ class TM1637Display:
         return digits
 
     def encodeDigit(self, digit):
-        return self.digitToSegment[digit & 0x0f]
+        return digitToSegment[digit & 0x0f]
