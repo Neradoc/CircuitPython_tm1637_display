@@ -5,7 +5,7 @@ from tm1637_display import TM1637Display
 display = TM1637Display(board.SCL, board.SDA, length=6)
 DELAY = 0.5
 
-display.print("HELLO ")
+display.print("HELLO .")
 time.sleep(DELAY)
 display.print("PQ-SUJ")
 time.sleep(DELAY)
