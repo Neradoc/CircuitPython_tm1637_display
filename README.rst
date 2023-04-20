@@ -26,7 +26,7 @@ Driver for the TM1637 display.
 
 Protocol decoded from the Arduino library: https://github.com/avishorp/TM1637
 
-.. image:: docs/_static/photo.jpg
+.. image:: ../docs/_static/photo.jpg
     :alt: Picture of a 6 digits 4-segment display
 
 Dependencies
