@@ -7,8 +7,10 @@
 import os
 import sys
 import datetime
+import shutil
 
 sys.path.insert(0, os.path.abspath(".."))
+shutil.copytree("../images", "images", dirs_exist_ok=True)
 
 # -- General configuration ------------------------------------------------
 
@@ -128,7 +130,7 @@ else:
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["_static"]
+html_static_path = ["_static", "images"]
 
 # The name of an image file (relative to this directory) to use as a favicon of
 # the docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32

@@ -30,7 +30,8 @@ __pycache__
 *.pyc
 
 # Sphinx build-specific files
-_build
+docs/_build
+docs/images
 
 # This file results from running `pip -e install .` in a local repository
 *.egg-info
