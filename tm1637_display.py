@@ -316,3 +316,8 @@ class TM1637Display:
             stnum = stnum[: len(self.digits) + 1]
         # make it a text
         self._text(stnum)
+
+    def deinit(self):
+        self.Clk.deinit()
+        self.DIO.deinit()
+
