@@ -1,6 +1,6 @@
 import board
 import time
-from TM1637Display import TM1637Display
+from tm1637_display import TM1637Display
 
 display = TM1637Display(board.SCL, board.SDA, length=6)
 DELAY = 0.5
