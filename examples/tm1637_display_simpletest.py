@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2017 Scott Shawcroft, written for Adafruit Industries
+# SPDX-FileCopyrightText: Copyright (c) 2023 Neradoc
+#
+# SPDX-License-Identifier: Unlicense
+
 import board
 import time
 from tm1637_display import TM1637Display

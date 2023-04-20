@@ -1,20 +1,30 @@
+# SPDX-FileCopyrightText: 2017 Scott Shawcroft, written for Adafruit Industries
+# SPDX-FileCopyrightText: Copyright (c) 2023 Neradoc
+#
+# SPDX-License-Identifier: MIT
 """
-//  Author: avishorp@gmail.com
-//
-//  This library is free software; you can redistribute it and/or
-//  modify it under the terms of the GNU Lesser General Public
-//  License as published by the Free Software Foundation; either
-//  version 2.1 of the License, or (at your option) any later version.
-//
-//  This library is distributed in the hope that it will be useful,
-//  but WITHOUT ANY WARRANTY; without even the implied warranty of
-//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-//  Lesser General Public License for more details.
-//
-//  You should have received a copy of the GNU Lesser General Public
-//  License along with this library; if not, write to the Free Software
-//  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+`tm1637_display`
+================================================================================
+
+Driver for the TM1637 display.
+
+
+* Author(s): Neradoc
+
+Implementation Notes
+--------------------
+
+**Software and Dependencies:**
+
+* Adafruit CircuitPython firmware for the supported boards:
+  https://circuitpython.org/downloads
 """
+
+# imports
+
+__version__ = "0.0.0+auto.0"
+__repo__ = "https://github.com/Neradoc/CircuitPython_tm1637_display.git"
+
 import digitalio
 import microcontroller
 
@@ -24,14 +34,7 @@ try:
 except ImportError:
     pass
 
-SEG_A = 0b00000001
-SEG_B = 0b00000010
-SEG_C = 0b00000100
-SEG_D = 0b00001000
-SEG_E = 0b00010000
-SEG_F = 0b00100000
-SEG_G = 0b01000000
-SEG_DP = 0b10000000
+DOT_SEGMENT = 0b10000000
 
 DEFAULT_BIT_DELAY = 100
 
@@ -180,11 +183,11 @@ class TM1637Display:
         microcontroller.delay_us(self._bit_delay)
 
     def _start(self):
-        self.DIO.value = False  # ?
+        self.DIO.value = False
         self.bit_delay()
 
     def _stop(self):
-        self.DIO.value = False  # ?
+        self.DIO.value = False
         self.bit_delay()
         self.Clk.value = True
         self.bit_delay()
@@ -203,7 +206,7 @@ class TM1637Display:
             if data & 0x01:
                 self.DIO.value = True
             else:
-                self.DIO.value = False  # ?
+                self.DIO.value = False
 
             self.bit_delay()
 
@@ -295,7 +298,7 @@ class TM1637Display:
                 continue
             self.digits[k] = letter_to_segment[letter.lower()]
             if dot:
-                self.digits[k] |= SEG_DP
+                self.digits[k] |= DOT_SEGMENT
                 dot = False
             k = k - 1
             if k < 0:
