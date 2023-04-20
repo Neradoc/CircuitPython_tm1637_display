@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 Neradoc
 #
 # SPDX-License-Identifier: MIT
+# pylint: disable=too-many-arguments
 """
 `tm1637_display`
 ================================================================================
@@ -27,20 +28,21 @@ __repo__ = "https://github.com/Neradoc/CircuitPython_tm1637_display.git"
 
 import digitalio
 import microcontroller
+from micropython import const
 
 try:
-    from typing import Union, List, Tuple, Optional, Dict
+    from typing import Union
     from microcontroller import Pin
 except ImportError:
     pass
 
-DOT_SEGMENT = 0b10000000
+_DOT_SEGMENT = const(0b10000000)
 
-DEFAULT_BIT_DELAY = 100
+_DEFAULT_BIT_DELAY = const(100)
 
-TM1637_I2C_COMM1 = 0x40
-TM1637_I2C_COMM2 = 0xC0
-TM1637_I2C_COMM3 = 0x80
+_TM1637_I2C_COMM1 = const(0x40)
+_TM1637_I2C_COMM2 = const(0xC0)
+_TM1637_I2C_COMM3 = const(0x80)
 
 """
 //
@@ -71,7 +73,7 @@ digit_to_segment = [
     0b01111001,  # E
     0b01110001,  # F
 ]
-minus_segments = 0b01000000
+_MINUS_SEGMENTS = const(0b01000000)
 letter_to_segment = {
     letter: digit_to_segment[pos] for pos, letter in enumerate("0123456789abcdef")
 }
@@ -79,7 +81,7 @@ letter_to_segment.update(
     {
         "": 0,
         " ": 0,
-        "-": minus_segments,
+        "-": _MINUS_SEGMENTS,
         "h": 0b01110110,
         "j": 0b00001110,
         "l": 0b00111000,
@@ -103,7 +105,8 @@ class TM1637Display:
         match the internal order of the chip. Reverse it for LTR.
     :param bool auto_write: True if the display should immediately change when set.
         If False, `show` must be called explicitly.
-    :param int bit_delay: the (minimum) delay between bit twiddlings in us.
+    :param int bit_delay: The (minimum) delay between bit twiddlings in us.
+    :param int brightness: The brightness, value from 0 to 7, False if off.
     """
 
     def __init__(
@@ -113,7 +116,8 @@ class TM1637Display:
         length: int = 4,
         digit_order: tuple = None,
         auto_write: bool = True,
-        bit_delay: int = DEFAULT_BIT_DELAY,
+        bit_delay: int = _DEFAULT_BIT_DELAY,
+        brightness: int = 7,
     ):
         if not digit_order:
             self.digit_order = (2, 1, 0, 5, 4, 3)
@@ -124,18 +128,19 @@ class TM1637Display:
 
         self._bit_delay = bit_delay
         self._auto_write = auto_write
-        self.brightness = 7
+        self._brightness = 0xF  # default full on
+        self.brightness = brightness
         self.digits = bytearray(length)
 
         # Set the pin direction and default value.
-        self.Clk = digitalio.DigitalInOut(clock)
-        self.DIO = digitalio.DigitalInOut(data)
-        self.Clk.switch_to_output(True)
-        self.DIO.switch_to_output(True)
+        self.clk = digitalio.DigitalInOut(clock)
+        self.dio = digitalio.DigitalInOut(data)
+        self.clk.switch_to_output(True)
+        self.dio.switch_to_output(True)
 
-    def _set_brightness(self, brightness: int, on: bool = True):
+    def _set_brightness(self, brightness: int, enabled: bool = True):
         """Set the brightness from 0 to 7, and enable light or not"""
-        self._brightness = (brightness & 0x7) | (0x08 if on else 0x00)
+        self._brightness = (brightness & 0x7) | (0x08 if enabled else 0x00)
 
     @property
     def brightness(self):
@@ -147,7 +152,7 @@ class TM1637Display:
     @brightness.setter
     def brightness(self, value: int):
         if value is None:
-            self._set_brightness(0, on=False)
+            self._set_brightness(0, enabled=False)
         elif value not in range(8):
             raise ValueError("brightness must be in the range 0-7")
         else:
@@ -156,12 +161,12 @@ class TM1637Display:
     def set_segments(self, segments: bytes, pos=0):
         """Directly set the bit values of the segments"""
         self._start()
-        self._write_byte(TM1637_I2C_COMM1)
+        self._write_byte(_TM1637_I2C_COMM1)
         self._stop()
 
         # Write COMM2 + first digit address
         self._start()
-        self._write_byte(TM1637_I2C_COMM2)
+        self._write_byte(_TM1637_I2C_COMM2)
 
         # Write the data bytes
         length = len(self.digit_order)
@@ -173,67 +178,68 @@ class TM1637Display:
 
         # Write COMM3 + brightness
         self._start()
-        self._write_byte(TM1637_I2C_COMM3 + (self._brightness & 0x0F))
+        self._write_byte(_TM1637_I2C_COMM3 + (self._brightness & 0x0F))
         self._stop()
 
     def clear(self):
+        """Clear the display, nothing on it."""
         self.set_segments(bytearray(len(self.digits)))
 
-    def bit_delay(self):
+    def _delay(self):
         microcontroller.delay_us(self._bit_delay)
 
     def _start(self):
-        self.DIO.value = False
-        self.bit_delay()
+        self.dio.value = False
+        self._delay()
 
     def _stop(self):
-        self.DIO.value = False
-        self.bit_delay()
-        self.Clk.value = True
-        self.bit_delay()
-        self.DIO.value = True
-        self.bit_delay()
+        self.dio.value = False
+        self._delay()
+        self.clk.value = True
+        self._delay()
+        self.dio.value = True
+        self._delay()
 
     def _write_byte(self, data: int):
         """Write a byte to the board, bit bangging... is it I2C ?"""
         # 8 Data Bits
-        for i in range(8):
+        for _ in range(8):
             # CLK low
-            self.Clk.value = False
-            self.bit_delay()
+            self.clk.value = False
+            self._delay()
 
             # Set data bit
             if data & 0x01:
-                self.DIO.value = True
+                self.dio.value = True
             else:
-                self.DIO.value = False
+                self.dio.value = False
 
-            self.bit_delay()
+            self._delay()
 
             # CLK high
-            self.Clk.value = True
-            self.bit_delay()
+            self.clk.value = True
+            self._delay()
             data = data >> 1
 
         # Wait for acknowledge
         # CLK to zero
-        self.Clk.value = False
-        self.DIO.switch_to_input(digitalio.Pull.UP)
-        self.bit_delay()
+        self.clk.value = False
+        self.dio.switch_to_input(digitalio.Pull.UP)
+        self._delay()
 
         # CLK to high
-        self.Clk.value = True
-        self.bit_delay()
-        ack = self.DIO.value
+        self.clk.value = True
+        self._delay()
+        ack = self.dio.value
         if ack is False:
-            self.DIO.switch_to_output(False)
+            self.dio.switch_to_output(False)
         else:
             # ?? do nothing ? raise ? (switch to output anyway)
-            self.DIO.switch_to_output(True)
+            self.dio.switch_to_output(True)
 
-        self.bit_delay()
-        self.Clk.value = False
-        self.bit_delay()
+        self._delay()
+        self.clk.value = False
+        self._delay()
 
         return ack
 
@@ -241,9 +247,9 @@ class TM1637Display:
         """Set the locations of dots on the display."""
         for i, num in enumerate(self.digits):
             if dots[i]:
-                self.digits[i] |= 0x80
+                self.digits[i] = num | 0x80
             else:
-                self.digits[i] &= 0x7F
+                self.digits[i] = num & 0x7F
         if self._auto_write:
             self.show()
 
@@ -260,10 +266,10 @@ class TM1637Display:
     def auto_write(self, auto_write: bool) -> None:
         self._auto_write = bool(auto_write)
 
-    def print(self, value: Union(int, float, str), decimal: int = 0):
+    def print(self, value: Union(float, str), decimal: int = 0):
         """Print the value to the display.
 
-        :param str|float value: The value to print
+        :param str|float|str value: The value to print
         :param int decimal: The number of decimal places for a floating point
             number if decimal is greater than zero, or the input number is an
             integer if decimal is zero.
@@ -277,10 +283,10 @@ class TM1637Display:
         if self._auto_write:
             self.show()
 
-    def print_hex(self, value: Union(int, float, str)):
+    def print_hex(self, value: Union(int, str)):
         """Print the value as a hexidecimal string to the display.
 
-        :param int|str value: The number to print
+        :param int|float|str value: The number to print
         """
         if isinstance(value, int):
             self.print("{0:x}".format(value))
@@ -298,7 +304,7 @@ class TM1637Display:
                 continue
             self.digits[k] = letter_to_segment[letter.lower()]
             if dot:
-                self.digits[k] |= DOT_SEGMENT
+                self.digits[k] |= _DOT_SEGMENT
                 dot = False
             k = k - 1
             if k < 0:
@@ -321,6 +327,6 @@ class TM1637Display:
         self._text(stnum)
 
     def deinit(self):
-        self.Clk.deinit()
-        self.DIO.deinit()
-
+        """Deinit. Free the pins."""
+        self.clk.deinit()
+        self.dio.deinit()
