@@ -266,7 +266,7 @@ class TM1637Display:
     def auto_write(self, auto_write: bool) -> None:
         self._auto_write = bool(auto_write)
 
-    def print(self, value: Union(float, str), decimal: int = 0):
+    def print(self, value: Union[int, float, str], decimal: int = 0):
         """Print the value to the display.
 
         :param str|float|str value: The value to print
@@ -283,7 +283,7 @@ class TM1637Display:
         if self._auto_write:
             self.show()
 
-    def print_hex(self, value: Union(int, str)):
+    def print_hex(self, value: Union[int, float, str]):
         """Print the value as a hexidecimal string to the display.
 
         :param int|float|str value: The number to print
@@ -312,7 +312,7 @@ class TM1637Display:
         for i in range(k + 1):
             self.digits[i] = 0
 
-    def _number(self, number: Union(float, int), decimal: int = 0) -> str:
+    def _number(self, number: Union[float, int], decimal: int = 0) -> str:
         """Format and siplay a number"""
         if isinstance(number, float) and decimal > 0:
             stnum = f"{number:f}"
