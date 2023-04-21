@@ -3,9 +3,8 @@ Introduction
 
 
 .. image:: https://readthedocs.org/projects/tm1637-display-for-circuitpython/badge/?version=latest
-    :target: https://tm1637-display-for-circuitpython   .readthedocs.io/
+    :target: https://tm1637-display-for-circuitpython.readthedocs.io/
     :alt: Documentation Status
-
 
 
 .. image:: https://img.shields.io/discord/327254708534116352.svg
