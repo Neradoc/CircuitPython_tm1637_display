@@ -28,11 +28,11 @@ __repo__ = "https://github.com/Neradoc/CircuitPython_tm1637_display.git"
 
 import digitalio
 import microcontroller
+from microcontroller import Pin
 from micropython import const
 
 try:
     from typing import Union
-    from microcontroller import Pin
 except ImportError:
     pass
 
@@ -120,7 +120,7 @@ class TM1637Display:
         brightness: int = 7,
     ):
         if not digit_order:
-            self.digit_order = (2, 1, 0, 5, 4, 3)
+            self.digit_order = list(range(length))
         else:
             if len(digit_order) != length:
                 raise ValueError("digit_order is a list of all digit positions")
@@ -133,10 +133,17 @@ class TM1637Display:
         self.digits = bytearray(length)
 
         # Set the pin direction and default value.
-        self.clk = digitalio.DigitalInOut(clock)
-        self.dio = digitalio.DigitalInOut(data)
-        self.clk.switch_to_output(True)
-        self.dio.switch_to_output(True)
+        if isinstance(clock, Pin):
+            self.clk = digitalio.DigitalInOut(clock)
+            self.clk.switch_to_output(True)
+        else:
+            self.clk = clock
+
+        if isinstance(data, Pin):
+            self.dio = digitalio.DigitalInOut(data)
+            self.dio.switch_to_output(True)
+        else:
+            self.dio = data
 
     def _set_brightness(self, brightness: int, enabled: bool = True):
         """Set the brightness from 0 to 7, and enable light or not"""
@@ -302,6 +309,8 @@ class TM1637Display:
             if letter == ".":
                 dot = True
                 continue
+            if letter.lower() not in letter_to_segment:
+                raise ValueError(f"Letter {letter} has not matching representation")
             self.digits[k] = letter_to_segment[letter.lower()]
             if dot:
                 self.digits[k] |= _DOT_SEGMENT
