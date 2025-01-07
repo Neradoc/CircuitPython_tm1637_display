@@ -82,16 +82,33 @@ letter_to_segment.update(
         "": 0,
         " ": 0,
         "-": _MINUS_SEGMENTS,
+        "g": 0b00111101,
         "h": 0b01110110,
+        "i": 0b00110000,
         "j": 0b00001110,
         "l": 0b00111000,
+        "n": 0b01010100,
         "o": 0b00111111,
         "p": 0b01110011,
         "q": 0b01100111,
+        "r": 0b01010000,
         "s": 0b01101101,
+        "t": 0b00110001,
         "u": 0b00111110,
+        "v": 0b00011100,
+        "y": 0b01100110,
     }
 )
+
+
+def _upside_down(val):
+    """Upside down version of a letter in 7-segment coding"""
+    return (
+        (val & 0b10000000)  # dot
+        | (val & 0b1000000)  # G segment
+        | (val & 0b111) << 3  # ABC -> DEF
+        | (val & 0b111000) >> 3  # DEF -> ABC
+    )
 
 
 class TM1637Display:
@@ -107,6 +124,7 @@ class TM1637Display:
         If False, `show` must be called explicitly.
     :param int bit_delay: The (minimum) delay between bit twiddlings in us.
     :param int brightness: The brightness, value from 0 to 7, False if off.
+    :param int rotation: Rotate the display 180 degrees with a value of 180, default 0.
     """
 
     def __init__(
@@ -118,6 +136,7 @@ class TM1637Display:
         auto_write: bool = True,
         bit_delay: int = _DEFAULT_BIT_DELAY,
         brightness: int = 7,
+        rotation: int = 0,
     ):
         if not digit_order:
             self.digit_order = list(range(length))
@@ -126,10 +145,13 @@ class TM1637Display:
                 raise ValueError("digit_order is a list of all digit positions")
             self.digit_order = digit_order
 
+        # don't auto write during setup
+        self._auto_write = False
         self._bit_delay = bit_delay
-        self._auto_write = auto_write
         self._brightness = 0xF  # default full on
         self.brightness = brightness
+        self._rotation = 0
+        self.rotation = rotation
         self.digits = bytearray(length)
 
         # Set the pin direction and default value.
@@ -145,13 +167,15 @@ class TM1637Display:
         else:
             self.dio = data
 
+        self._auto_write = auto_write
+
     def _set_brightness(self, brightness: int, enabled: bool = True):
         """Set the brightness from 0 to 7, and enable light or not"""
         self._brightness = (brightness & 0x7) | (0x08 if enabled else 0x00)
 
     @property
     def brightness(self):
-        """Brightness is a value between 0 and 7. Set to None to turn off."""
+        """Brightness is a value between 0 and 7. Set to False to turn off."""
         if self._brightness & 0x8:
             return False
         return self._brightness & 0x7
@@ -164,6 +188,23 @@ class TM1637Display:
             raise ValueError("brightness must be in the range 0-7")
         else:
             self._set_brightness(value)
+        if self._auto_write:
+            self.show()
+
+    @property
+    def rotation(self):
+        """Rotation is 0 or 180"""
+        return self._rotation
+
+    @rotation.setter
+    def rotation(self, rotation: int):
+        if not rotation in (0, 180):
+            raise ValueError("rotation must be 0 or 180")
+        if rotation != self._rotation:
+            self.digit_order = tuple(reversed(self.digit_order))
+        self._rotation = rotation
+        if self._auto_write:
+            self.show()
 
     def set_segments(self, segments: bytes, pos=0):
         """Directly set the bit values of the segments"""
@@ -180,7 +221,10 @@ class TM1637Display:
         digit_order = self.digit_order
         for offset in range(length):
             k = digit_order[(pos + offset) % length]
-            self._write_byte(segments[k])
+            if self.rotation:
+                self._write_byte(_upside_down(segments[k]))
+            else:
+                self._write_byte(segments[k])
         self._stop()
 
         # Write COMM3 + brightness
