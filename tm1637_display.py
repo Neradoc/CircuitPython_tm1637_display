@@ -182,7 +182,7 @@ class TM1637Display:
 
     @brightness.setter
     def brightness(self, value: int):
-        if value is None:
+        if value is False:
             self._set_brightness(0, enabled=False)
         elif value not in range(8):
             raise ValueError("brightness must be in the range 0-7")
